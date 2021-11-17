@@ -1,0 +1,4 @@
+app1:
+  url: "https://robot-dreams-de-api.herokuapp.com"
+  endpoint_auth: "/auth"
+  endpoint_data: "/out_of_stock"
