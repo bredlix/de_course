@@ -49,7 +49,7 @@ def dshop_load_silver(table_name,**kwargs):
 
     logging.info(f"Writing table {table_name} to silver")
 
-    table_df = spark.read.csv(os.path.join('/', 'datalake', 'bronze', 'dshop', etl_date, f'{table_name}.csv'))
+    table_df = spark.read.option("header", "true").csv(os.path.join('/', 'datalake', 'bronze', 'dshop', etl_date, f'{table_name}.csv'))
     table_df.write.parquet(
         os.path.join('/', 'datalake', 'silver', 'dshop', table_name),
         mode="overwrite")
@@ -68,7 +68,7 @@ def dshop_clients_load_silver(**kwargs):
 
     logging.info(f"Writing table clients to silver")
 
-    table_df = spark.read.csv(os.path.join('/', 'datalake', 'bronze', 'dshop', etl_date, 'clients.csv'))
+    table_df = spark.read.option("header", "true").csv(os.path.join('/', 'datalake', 'bronze', 'dshop', etl_date, 'clients.csv'))
     table_df = table_df.dropDuplicates()
     table_df.write.parquet(
         os.path.join('/', 'datalake', 'silver', 'dshop', 'clients'),
