@@ -79,7 +79,7 @@ def dhop_oos_to_dwh(**kwargs):
     gp_url = f'jdbc:postgresql://{gp_con.host}:{gp_con.port}/postgres'
     gp_creds = {'user': gp_con.login, 'password': gp_con.password}
 
-    df = spark.read.parquet(os.path.join('/', 'datalake', 'bronze', 'out_of_stock_api', f'{etl_date}'))
+    df = spark.read.parquet(os.path.join('/', 'datalake', 'silver', 'out_of_stock'))
 
     logging.info(f'Writing Out of stock product list for {etl_date} into DWH')
 
