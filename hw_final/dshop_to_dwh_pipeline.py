@@ -29,7 +29,7 @@ def dshop_load_bronze(table_name,**kwargs):
 
     table_df = spark.read.jdbc(pg_url, table=table_name, properties=pg_properties)
     table_df.write.csv(
-        os.path.join('/', 'datalake', 'bronze', etl_date, f'{table_name}.csv'),
+        os.path.join('/', 'datalake', 'bronze', 'dshop', etl_date, f'{table_name}.csv'),
         sep=',',
         header=True,
         mode="overwrite")
