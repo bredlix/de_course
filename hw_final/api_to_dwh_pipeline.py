@@ -1,10 +1,11 @@
 from datetime import datetime
 from requests.exceptions import HTTPError
-import os, logging, requests,json
+import os, logging, requests, json
 
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.dummy_operator import DummyOperator
+from airflow.hooks.base_hook import BaseHook
 
 from pyspark.sql import SparkSession
 
@@ -15,37 +16,28 @@ def dhop_oos_to_bronze(**kwargs):
 
     etl_date = kwargs.get('ds')
 
-    try:
+    api_conn = BaseHook.get_connection('api_oos')
 
-        url_aut = 'https://robot-dreams-de-api.herokuapp.com/auth'
-        header_aut = {'content-type': 'application/json'}
-        data_aut = {'username': 'rd_dreams', 'password': 'djT6LasE'}
-        r = requests.post(url_aut, headers=header_aut, data=json.dumps(data_aut))
-        token = r.json()['access_token']
+    header_aut = {'content-type': 'application/json'}
+    data_aut = {'username': api_conn.login, 'password': api_conn.password}
+    r = requests.post(api_conn.host+'/auth', headers=header_aut, data=json.dumps(data_aut))
+    token = r.json()['access_token']
 
-        url = 'https://robot-dreams-de-api.herokuapp.com/out_of_stock'
-        header = {'content-type': 'application/json', 'Authorization': 'JWT ' + token}
-        data = {"date": etl_date}
+    header = {'content-type': 'application/json', 'Authorization': 'JWT ' + token}
+    data = {"date": etl_date}
 
-        response = requests.get(url, headers=header, data=json.dumps(data))
-        data = response.json()
-        response.raise_for_status()
+    response = requests.get(api_conn.host+'/out_of_stock', headers=header, data=json.dumps(data))
+    data = response.json()
 
-        client = InsecureClient(f'http://127.0.0.1:50070/', user='user')
+    client = InsecureClient(f'http://127.0.0.1:50070/', user='user')
 
-        logging.info(f"Getting Out of stock product list for {etl_date}")
+    logging.info(f"Getting Out of stock product list for {etl_date}")
 
-        with client.write(os.path.join('/', 'datalake', 'bronze', 'out_of_stock_api', f'{etl_date}.json'),
-                          encoding='utf-8') as json_file:
-            json.dump(data, json_file)
+    with client.write(os.path.join('/', 'datalake', 'bronze', 'out_of_stock_api', f'{etl_date}.json'),
+                      encoding='utf-8') as json_file:
+        json.dump(data, json_file)
 
-        logging.info(f"Loaded Out of stock product list for {etl_date} into Bronze")
-
-    except HTTPError as e:
-        if e.response.status_code == 404:
-            logging.info(f"No data for {etl_date}")
-        else:
-            logging.info(" Х Т Т П ошибка")
+    logging.info(f"Loaded Out of stock product list for {etl_date} into Bronze")
 
 
 def dhop_oos_to_silver(**kwargs):
@@ -68,7 +60,7 @@ def dhop_oos_to_silver(**kwargs):
     logging.info("Successfully loaded")
 
 dag = DAG(
-    dag_id='api_pipeline',
+    dag_id='api_dwh_pipeline',
     description='Export api dumps to HDFS',
     schedule_interval='@daily',
     start_date=datetime(2021, 11, 8, 12, 00)
