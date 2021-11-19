@@ -112,12 +112,15 @@ dag = DAG(
 start = DummyOperator(dag=dag, task_id='transfer_start')
 end = DummyOperator(dag=dag, task_id='transfer_to_bronze_end')
 end2 = DummyOperator(dag=dag, task_id='transfer_to_silver_end')
+end3 = DummyOperator(dag=dag, task_id='transfer_to_DWH_end')
 
 tables = ['departments', 'clients', 'orders', 'products', 'aisles']
 pg_tables_tasks = []
 
 tables_to_silver = ['departments', 'orders', 'products', 'aisles']
 pg_tables_to_silver_tasks = []
+
+dshop_to_dwh = []
 
 for table in tables:
     pg_tables_tasks.append(
@@ -144,5 +147,15 @@ pg_tables_to_silver_tasks.append(
         python_callable=dshop_clients_load_silver,
         provide_context=True))
 
+for table in tables:
+    dshop_to_dwh.append(
+        PythonOperator(
+            task_id=f'load_{table}_to_DWH',
+            dag=dag,
+            python_callable=dshop_load_dwh,
+            provide_context=True,
+            op_kwargs={'table_name': f'{table}'}))
 
-start >> pg_tables_tasks >> end >> pg_tables_to_silver_tasks >> end2
+
+start >> pg_tables_tasks >> end >> pg_tables_to_silver_tasks >> end2 >> dshop_to_dwh >> end3
+
