@@ -49,9 +49,9 @@ def dshop_load_silver(table_name,**kwargs):
 
     logging.info(f"Writing table {table_name} to silver")
 
-    table_df = spark.read.csv(os.path.join('/', 'datalake', 'bronze', etl_date, f'{table_name}.csv'))
+    table_df = spark.read.csv(os.path.join('/', 'datalake', 'bronze', 'dshop', etl_date, f'{table_name}.csv'))
     table_df.write.parquet(
-        os.path.join('/', 'datalake', 'silver', table_name),
+        os.path.join('/', 'datalake', 'silver', 'dshop', table_name),
         mode="overwrite")
 
     logging.info(f"Successfully loaded {table_name} in parquet")
@@ -68,19 +68,45 @@ def dshop_clients_load_silver(**kwargs):
 
     logging.info(f"Writing table clients to silver")
 
-    table_df = spark.read.csv(os.path.join('/', 'datalake', 'bronze', etl_date, 'clients.csv'))
+    table_df = spark.read.csv(os.path.join('/', 'datalake', 'bronze', 'dshop', etl_date, 'clients.csv'))
     table_df = table_df.dropDuplicates()
     table_df.write.parquet(
-        os.path.join('/', 'datalake', 'silver', 'clients'),
+        os.path.join('/', 'datalake', 'silver', 'dshop', 'clients'),
         mode="overwrite")
 
     logging.info("Successfully loaded clients in parquet")
 
+
+def dshop_load_dwh(table_name,**kwargs):
+
+    etl_date = kwargs.get('ds')
+
+    spark = SparkSession.builder \
+        .config('spark.driver.extraClassPath'
+                , '/home/user/shared_folder/postgresql-42.3.1.jar') \
+        .master('local')\
+        .appName('dshop_oos_to_dwh')\
+        .getOrCreate()
+
+    gp_con = BaseHook.get_connection('gp_dwh')
+    gp_url = f'jdbc:postgresql://{gp_con.host}:{gp_con.port}/postgres'
+    gp_creds = {'user': gp_con.login, 'password': gp_con.password}
+
+    df = spark.read.parquet(os.path.join('/', 'datalake', 'silver', 'dshop', table_name))
+
+    logging.info(f"Writing table {table_name} to DWH")
+
+    df.write.jdbc(gp_url, table=table_name, properties=gp_creds, mode='overwrite')
+
+    logging.info(f"Successfully loaded {table_name} into DWH")
+    logging.info(f"{df.count()} rows written")
+
+
 dag = DAG(
-    dag_id='dshop_pipeline',
-    description='Export Postgres DB dumps to HDFS',
+    dag_id='dshop_dwh_pipeline',
+    description='Export Postgres DB dumps to DWH',
     schedule_interval='@daily',
-    start_date=datetime(2021, 11, 9, 12, 00)
+    start_date=datetime(2021, 11, 17, 12, 00)
 )
 
 start = DummyOperator(dag=dag, task_id='transfer_start')

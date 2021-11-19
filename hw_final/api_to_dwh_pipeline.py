@@ -83,7 +83,7 @@ def dhop_oos_to_dwh(**kwargs):
 
     logging.info(f'Writing Out of stock product list for {etl_date} into DWH')
 
-    df.write.jdbc(gp_url, table='out_of_stock', properties=gp_creds)
+    df.write.jdbc(gp_url, table='out_of_stock', properties=gp_creds, mode='append')
 
     logging.info(f"{df.count()} rows written")
     logging.info("Successfully loaded")
