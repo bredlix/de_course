@@ -1,5 +1,4 @@
 from datetime import datetime
-from requests.exceptions import HTTPError
 import os, logging, requests, json
 
 from airflow import DAG
@@ -8,6 +7,7 @@ from airflow.operators.dummy_operator import DummyOperator
 from airflow.hooks.base_hook import BaseHook
 
 from pyspark.sql import SparkSession
+from pyspark.sql.types import DateType, IntegerType, StructType
 
 from hdfs import InsecureClient
 
@@ -51,7 +51,11 @@ def dhop_oos_to_silver(**kwargs):
 
     logging.info(f'Writing Out of stock product list for {etl_date} into Silver')
 
-    df = spark.read.json(os.path.join('/', 'datalake', 'bronze', 'out_of_stock_api', f'{etl_date}.json'))
+    schema = StructType()\
+        .add('date', DateType(), False)\
+        .add('product_id', IntegerType(), False)
+
+    df = spark.read.schema(schema).json(os.path.join('/', 'datalake', 'bronze', 'out_of_stock_api', f'{etl_date}.json'))
     df.write.parquet(
         os.path.join('/', 'datalake', 'silver', 'out_of_stock'),
         mode='append')
